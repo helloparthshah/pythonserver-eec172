@@ -109,10 +109,10 @@ def predict():
     ]
     if(prediction_classes[0] == 1 and is_playing == False):
         is_playing = True
-        play_spotify()
+        # play_spotify()
     elif(prediction_classes[0] == 0 and is_playing == True):
         is_playing = False
-        pause_spotify()
+        # pause_spotify()
     print(prediction_classes)
     # return same json back
     return json.dumps({"prediction": prediction_classes[0]})
