@@ -1,6 +1,5 @@
 # flask server
-import ssl
-from flask import Flask, redirect, url_for, request
+from flask import Flask, request
 import json
 import numpy as np
 import pandas as pd
