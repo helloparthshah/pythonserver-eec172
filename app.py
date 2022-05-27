@@ -1,5 +1,6 @@
 # flask server
-from flask import Flask, request
+import ssl
+from flask import Flask, redirect, url_for, request
 import json
 import numpy as np
 import pandas as pd
@@ -7,6 +8,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 import requests
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+apiToken = os.getenv('spotifyToken')
+
+print(apiToken)
 
 df = pd.read_csv('data_file1.csv')
 df.fillna(0, inplace=True)
@@ -67,12 +75,15 @@ def post():
     return request.get_json()
 
 
+auth = "Bearer "+apiToken
+
+
 def play_spotify():
     # play spotify
     res = requests.put('https://api.spotify.com/v1/me/player/play', headers={
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "Authorization": "Bearer BQAQgxzSwoKs46bCduPDebLQ8TUnNE3YX_mT4qFJGy7sl5w6-0Wchookmf1i_8DKfv1VhWaMyF_u94SuqpJmYTA3XYMvozVQ1z8kb9-uSlT_QVfMdI2IVdMkwS_7LoIATPUt7m6pu1GAt4Dkqi_gyUM"
+        "Authorization": auth
     },
         data=json.dumps({}))
     print(res)
@@ -83,7 +94,7 @@ def pause_spotify():
     res = requests.put('https://api.spotify.com/v1/me/player/pause', headers={
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "Authorization": "Bearer BQAQgxzSwoKs46bCduPDebLQ8TUnNE3YX_mT4qFJGy7sl5w6-0Wchookmf1i_8DKfv1VhWaMyF_u94SuqpJmYTA3XYMvozVQ1z8kb9-uSlT_QVfMdI2IVdMkwS_7LoIATPUt7m6pu1GAt4Dkqi_gyUM"
+        "Authorization": auth
     },
         data=json.dumps({}))
     print(res)
@@ -109,10 +120,10 @@ def predict():
     ]
     if(prediction_classes[0] == 1 and is_playing == False):
         is_playing = True
-        # play_spotify()
+        play_spotify()
     elif(prediction_classes[0] == 0 and is_playing == True):
         is_playing = False
-        # pause_spotify()
+        pause_spotify()
     print(prediction_classes)
     # return same json back
     return json.dumps({"prediction": prediction_classes[0]})
