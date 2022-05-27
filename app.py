@@ -8,7 +8,7 @@ from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 import requests
 
-df = pd.read_csv('data_file.csv')
+df = pd.read_csv('data_file1.csv')
 df.fillna(0, inplace=True)
 
 df['is_inside'] = [
@@ -32,7 +32,7 @@ X_test_scaled = scaler.transform(X_test)
 headers = ["eduroam",  "ucd-guest",  "testwifi",
            "home1", "location", "DDC-ESDC",  "Lance2152"]
 
-model = tf.keras.models.load_model('model.h5')
+model = tf.keras.models.load_model('model1.h5')
 
 app = Flask(__name__)
 
