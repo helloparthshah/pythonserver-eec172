@@ -164,9 +164,6 @@ def post():
     return request.get_json()
 
 
-auth = ""
-
-
 @app.route("/settoken", methods=["GET"])
 def set_spotify_token():
     client_id = os.getenv('client_id')
@@ -206,12 +203,13 @@ def callback():
     # make the request
     r = requests.post(token_url, data=data)
     # get the token
-    auth = "Bearer " + r.json()['access_token']
+    os.environ['SPOTIFY_TOKEN'] = "Bearer " + r.json()['access_token']
     # return the token
-    return jsonify(auth)
+    return jsonify({'success': True})
 
 
 def play_spotify():
+    auth = os.getenv('SPOTIFY_TOKEN')
     # play spotify
     res = requests.put('https://api.spotify.com/v1/me/player/play', headers={
         "Accept": "application/json",
@@ -223,6 +221,7 @@ def play_spotify():
 
 
 def pause_spotify():
+    auth = os.getenv('SPOTIFY_TOKEN')
     # pause spotify
     res = requests.put('https://api.spotify.com/v1/me/player/pause', headers={
         "Accept": "application/json",
