@@ -2,9 +2,12 @@ from werkzeug.security import generate_password_hash
 import uuid
 import psycopg2
 import psycopg2.extras
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 psycopg2.extras.register_uuid()
-DATABASE_URL = "postgres://gztihlhulpjvxa:28f439eef115e52608072a462e137f5b5fc91fac3826c8df0482bcf59b2ab891@ec2-54-211-255-161.compute-1.amazonaws.com:5432/dcc5gos2g9dp28"
+DATABASE_URL = os.getenv('sql_url')
 con = psycopg2.connect(DATABASE_URL)
 # work with json
 cur = con.cursor(cursor_factory=psycopg2.extras.RealDictCursor)

@@ -15,7 +15,6 @@ from user import User
 from functools import wraps
 import datetime
 import urllib
-import psycopg2
 from user import con, cur
 
 load_dotenv()
