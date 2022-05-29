@@ -170,7 +170,7 @@ auth = ""
 @app.route("/settoken", methods=["GET"])
 def set_spotify_token():
     client_id = os.getenv('client_id')
-    redirect_uri = "http://localhost:5000/callback"
+    redirect_uri = request.base_url.replace('/settoken', '/callback')
     url = "https://accounts.spotify.com/authorize"
     data = {
         "response_type": "code",
@@ -193,7 +193,7 @@ def callback():
     client_id = os.getenv('client_id')
     client_secret = os.getenv('client_secret')
     # get the redirect uri
-    redirect_uri = "http://localhost:5000/callback"
+    redirect_uri = request.base_url.replace('/settoken', '/callback')
     # get the token
     token_url = "https://accounts.spotify.com/api/token"
     data = {
