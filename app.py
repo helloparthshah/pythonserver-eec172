@@ -15,6 +15,8 @@ from user import User
 from functools import wraps
 import datetime
 import urllib
+import psycopg2
+from user import con, cur
 
 load_dotenv()
 
@@ -49,10 +51,10 @@ app = Flask(__name__)
 
 app.config['SECRET_KEY'] = os.getenv('secretKey')
 
-users = [
+''' users = [
     User('test', 'test'),
     User('test1', 'test1'),
-]
+] '''
 
 
 # header = ['eec172', 'testwifi', 'ucdguest', 'eduroam']
@@ -78,8 +80,14 @@ def token_required(f):
         try:
             data = jwt.decode(
                 token, app.config['SECRET_KEY'], algorithms="HS256")
-            current_user = next(
-                (x for x in users if x.publicId == data['public_id']))
+            cur.execute("SELECT * FROM users WHERE publicId = %s",
+                        (data['public_id'],))
+            user = cur.fetchone()
+            user = dict(user)
+            if user:
+                current_user = user
+            # current_user = next(
+            #     (x for x in users if x.publicId == data['public_id']))
 
         except Exception as e:
             print(e)
@@ -91,7 +99,11 @@ def token_required(f):
 
 @app.route('/')
 def getUsers():
-    return jsonify({'users': [x.toJSON() for x in users]})
+    cur.execute("SELECT * FROM users")
+    users = cur.fetchall()
+    # convert to json
+    print(users[0]['username'])
+    return jsonify(users)
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -104,15 +116,18 @@ def signup_user():
     print(data)
 
     if 'username' in data or 'password' in data:
+        cur.execute("SELECT * FROM users WHERE username = %s",
+                    (data['username'],))
+        user = cur.fetchone()
+        if user:
+            return make_response('Username already exists', 400)
 
-        for user in users:
-            if user.username == data['username']:
-                return make_response('user already exists', 400)
-
+        usr = User(data['username'], data['password'])
+        ''' return make_response('User created', 201)
         users.append(User(
             data['username'],
             data['password'])
-        )
+        ) '''
 
         return jsonify({'message': 'registered successfully'})
     return make_response('Username or password not provided', 400)
@@ -126,10 +141,15 @@ def login_user():
     if not auth or not auth.username or not auth.password:
         return make_response('could not verify', 401, {'WWW.Authentication': 'Basic realm: "login required"'})
     try:
-        user = next((x for x in users if x.username == auth.username), None)
-
-        if user != None and check_password_hash(user.password, auth.password):
-            token = jwt.encode({'public_id': user.publicId, 'exp': datetime.datetime.utcnow(
+        cur.execute("SELECT * FROM users WHERE username = %s",
+                    (auth.username,))
+        user = cur.fetchone()
+        # convert realdictrow to json
+        user = dict(user)
+        # user = next((x for x in users if x.username == auth.username), None)
+        print(user)
+        if user != None and check_password_hash(user['password'], auth.password):
+            token = jwt.encode({'public_id': user['publicid'], 'exp': datetime.datetime.utcnow(
             ) + datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'], algorithm="HS256")
 
             return jsonify({'token': token})
@@ -144,7 +164,7 @@ def login_user():
 @app.route('/user', methods=['GET'])
 @token_required
 def getUser(current_user):
-    return jsonify({'user': current_user.toJSON()})
+    return jsonify({'user': current_user})
 
 
 @app.route("/post", methods=['POST'])
@@ -202,14 +222,20 @@ def callback():
     }
     # make the request
     r = requests.post(token_url, data=data)
-    # get the token
-    os.environ['SPOTIFY_TOKEN'] = "Bearer " + r.json()['access_token']
+    # save the token to a file
+    with open('token.txt', 'w') as f:
+        f.write("Bearer " + r.json()['access_token'])
+        f.close()
     # return the token
     return jsonify({'success': True})
 
 
 def play_spotify():
-    auth = os.getenv('SPOTIFY_TOKEN')
+    auth = ""
+    # get the token
+    with open('token.txt', 'r') as f:
+        auth = f.read()
+        f.close()
     # play spotify
     res = requests.put('https://api.spotify.com/v1/me/player/play', headers={
         "Accept": "application/json",
@@ -221,8 +247,12 @@ def play_spotify():
 
 
 def pause_spotify():
-    auth = os.getenv('SPOTIFY_TOKEN')
-    # pause spotify
+    auth = ""
+    # get the token
+    with open('token.txt', 'r') as f:
+        auth = f.read()
+        f.close()
+        # pause spotify
     res = requests.put('https://api.spotify.com/v1/me/player/pause', headers={
         "Accept": "application/json",
         "Content-Type": "application/json",
@@ -246,12 +276,15 @@ def predict(current_user):
     prediction_classes = [
         1 if prob > 0.5 else 0 for prob in np.ravel(predictions)
     ]
-    if(prediction_classes[0] == 1 and current_user.is_playing == False):
-        current_user.is_playing = True
+    if(prediction_classes[0] == 1 and current_user['is_playing'] == False):
+        cur.execute("UPDATE users SET is_playing = %s WHERE publicid = %s",
+                    (True, current_user['publicid']))
         play_spotify()
-    elif(prediction_classes[0] == 0 and current_user.is_playing == True):
-        current_user.is_playing = False
+    elif(prediction_classes[0] == 0 and current_user['is_playing'] == True):
+        cur.execute("UPDATE users SET is_playing = %s WHERE publicid = %s",
+                    (False, current_user['publicid']))
         pause_spotify()
+    con.commit()
     print(prediction_classes)
     # return same json back
     return json.dumps({"prediction": prediction_classes[0]})
