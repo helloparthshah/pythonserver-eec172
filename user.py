@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 psycopg2.extras.register_uuid()
-DATABASE_URL = os.getenv('sql_url')
+DATABASE_URL = os.getenv('DATABASE_URL')
 con = psycopg2.connect(DATABASE_URL)
 # work with json
 cur = con.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
