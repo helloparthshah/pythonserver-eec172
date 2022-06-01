@@ -68,7 +68,6 @@ def token_required(f):
     @wraps(f)
     def decorator(*args, **kwargs):
         # print the body
-        print(request.get_json())
         token = None
         auth = request.get_json()
         if 'Authorization' in request.get_json():
@@ -104,7 +103,6 @@ def getUsers():
     cur.execute("SELECT * FROM users")
     users = cur.fetchall()
     # convert to json
-    print(users[0]['username'])
     return jsonify(users)
 
 
@@ -278,18 +276,41 @@ def predict(current_user):
     prediction_classes = [
         1 if prob > 0.5 else 0 for prob in np.ravel(predictions)
     ]
+    go_outside = 0
+    if(prediction_classes[0] == 1):
+        # get last_time
+        cur.execute("SELECT last_time FROM users WHERE publicid = %s",
+                    (current_user['publicid'],))
+        last_time = cur.fetchone()
+        # convert to json
+        last_time = dict(last_time)
+        # convert to datetime
+        last_time = last_time['last_time']
+        # get current time
+        current_time = datetime.datetime.now()
+        # get difference
+        diff = current_time - last_time
+        # if difference is greater than 5 minutes
+        print(diff.seconds)
+        if(diff.seconds > 300):
+            go_outside = 1
+            print("Go outside!")
+    elif (prediction_classes[0] == 0):
+        cur.execute("UPDATE users SET last_time = %s WHERE publicid = %s",
+                    (datetime.datetime.now(), current_user['publicid']))
     if(prediction_classes[0] == 1 and current_user['is_playing'] == False):
         cur.execute("UPDATE users SET is_playing = %s WHERE publicid = %s",
                     (True, current_user['publicid']))
         play_spotify()
     elif(prediction_classes[0] == 0 and current_user['is_playing'] == True):
+        # set last_time to current time
         cur.execute("UPDATE users SET is_playing = %s WHERE publicid = %s",
                     (False, current_user['publicid']))
         pause_spotify()
     con.commit()
     print(prediction_classes)
     # return same json back
-    return json.dumps({"prediction": prediction_classes[0]})
+    return json.dumps({"prediction": prediction_classes[0], "go_outside": go_outside})
 
 
 if __name__ == "__main__":

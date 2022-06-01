@@ -13,7 +13,9 @@ con = psycopg2.connect(DATABASE_URL)
 cur = con.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
 cur.execute(
-    "CREATE TABLE IF NOT EXISTS users (username TEXT, password TEXT, publicId TEXT, is_playing BOOLEAN)")
+    "CREATE TABLE IF NOT EXISTS users (username TEXT, password TEXT, publicId TEXT, is_playing BOOLEAN,last_time TIMESTAMP)"
+)
+
 con.commit()
 
 
@@ -23,10 +25,10 @@ class User:
         self.password = generate_password_hash(password, method='sha256')
         self.publicId = str(uuid.uuid4())
         self.is_playing = False
-
+        self.last_time = None
         # add user to database
-        cur.execute("INSERT INTO users (username, password, publicId, is_playing) VALUES (%s, %s, %s, %s)",
-                    (self.username, self.password, self.publicId, self.is_playing))
+        cur.execute("INSERT INTO users (username, password, publicId, is_playing, last_time) VALUES (%s, %s, %s, %s, %s)",
+                    (self.username, self.password, self.publicId, self.is_playing, self.last_time))
         con.commit()
 
     def toJSON(self):
