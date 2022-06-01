@@ -67,11 +67,14 @@ app.config['SECRET_KEY'] = os.getenv('secretKey')
 def token_required(f):
     @wraps(f)
     def decorator(*args, **kwargs):
+        # print the body
+        print(request.get_json())
         token = None
-        if 'Authorization' in request.headers:
+        auth = request.get_json()
+        if 'Authorization' in request.get_json():
             # if 'token' in request.headers or 'Authorization' in request.headers:
-            if request.headers['Authorization'].split()[0] == 'Bearer':
-                token = request.headers['Authorization'].split()[1]
+            if auth['Authorization'].split()[0] == 'Bearer':
+                token = auth['Authorization'].split()[1]
 
         if not token:
             return jsonify({'message': 'a valid token is missing'})
