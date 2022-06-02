@@ -24,6 +24,8 @@ let iftt = function (id) {
     <option>Play</option>
     <option>Pause</option>
     <option>Email</option>
+    <option>Text</option>
+    <option>Notify</option>
 </select>
 </div>
 <div class="col text-center">

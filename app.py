@@ -327,7 +327,21 @@ def executeRules(rules):
         elif rule['then_action'] == 'Pause':
             pause_spotify()
         elif rule['then_action'] == 'Email':
-            print('email')
+            res = requests.get(
+                "https://maker.ifttt.com/trigger/email/json/with/key/osyHve2j9Mzls7D9-Ky9J8tBQ-aHHmesOnObP147Say"
+
+            )
+            print(res.text)
+        elif rule['then_action'] == 'Text':
+            res = requests.get(
+                "https://maker.ifttt.com/trigger/sms/json/with/key/osyHve2j9Mzls7D9-Ky9J8tBQ-aHHmesOnObP147Say"
+            )
+            print(res.text)
+        elif rule['then_action'] == 'Notify':
+            res = requests.get(
+                "https://maker.ifttt.com/trigger/notify/json/with/key/osyHve2j9Mzls7D9-Ky9J8tBQ-aHHmesOnObP147Say"
+            )
+            print(res.text)
 
 
 @app.route("/predict", methods=["POST"])
