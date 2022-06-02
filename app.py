@@ -1,8 +1,9 @@
 # flask server
-from flask import Flask, jsonify, request, make_response, redirect
+from flask import Flask, jsonify, request, make_response, redirect, render_template
 import json
 import numpy as np
 import pandas as pd
+import psycopg2
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
@@ -99,10 +100,67 @@ def token_required(f):
 
 
 @app.route('/')
+def index():
+    return render_template('index.html')
+
+
+@app.route('/updaterules', methods=['POST'])
+def updateRules():
+    cur = con.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    data = request.get_json()
+    # remove all the rules for the user
+    cur.execute("DELETE FROM rules WHERE username = %s", (data['username'],))
+    con.commit()
+    # add the new rules
+    for rule in data['rules']:
+        cur.execute("INSERT INTO rules (username, if_action,then_action) VALUES (%s, %s, %s)",
+                    (data['username'], rule['if'], rule['then']))
+    con.commit()
+    return jsonify({'message': 'rules updated'})
+
+
+@app.route('/getrules', methods=['POST'])
+def getRules():
+    cur = con.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    data = request.get_json()
+    print(data['username'])
+    cur.execute("SELECT * FROM rules WHERE username = %s",
+                (data['username'],))
+    rules = cur.fetchall()
+    if not rules:
+        return jsonify({'rules': []})
+    rules = [dict(rule) for rule in rules]
+    print(rules)
+    return jsonify({'rules': rules})
+
+
+@app.route('/allrules', methods=['GET'])
+def getAllRules():
+    cur.execute("SELECT * FROM rules")
+    rules = cur.fetchall()
+    if not rules:
+        return jsonify({'rules': []})
+    rules = [dict(rule) for rule in rules]
+    print(rules)
+    return jsonify({'rules': rules})
+
+
+@app.route('/users', methods=['GET'])
+def users():
+    cur.execute("SELECT * FROM users")
+    users = cur.fetchall()
+    # convert to json
+    users = [dict(user) for user in users]
+    return render_template('users.html', users=users)
+
+
+@app.route('/getusers', methods=['GET'])
 def getUsers():
     cur.execute("SELECT * FROM users")
     users = cur.fetchall()
     # convert to json
+    if not users:
+        return jsonify({'users': []})
     return jsonify(users)
 
 
@@ -122,7 +180,7 @@ def signup_user():
         if user:
             return make_response('Username already exists', 400)
 
-        usr = User(data['username'], data['password'])
+        user = User(data['username'], data['password'])
         ''' return make_response('User created', 201)
         users.append(User(
             data['username'],
@@ -262,6 +320,16 @@ def pause_spotify():
     print(res.text)
 
 
+def executeRules(rules):
+    for rule in rules:
+        if rule['then_action'] == 'Play':
+            play_spotify()
+        elif rule['then_action'] == 'Pause':
+            pause_spotify()
+        elif rule['then_action'] == 'Email':
+            print('email')
+
+
 @app.route("/predict", methods=["POST"])
 @token_required
 def predict(current_user):
@@ -278,6 +346,8 @@ def predict(current_user):
     ]
     go_outside = 0
     if(prediction_classes[0] == 1):
+        cur.execute("UPDATE users SET location = %s WHERE publicid = %s",
+                    (True, current_user['publicid']))
         # get last_time
         cur.execute("SELECT last_time FROM users WHERE publicid = %s",
                     (current_user['publicid'],))
@@ -288,25 +358,40 @@ def predict(current_user):
         last_time = last_time['last_time']
         # get current time
         current_time = datetime.datetime.now()
-        # get difference
-        diff = current_time - last_time
-        # if difference is greater than 5 minutes
-        print(diff.seconds)
-        if(diff.seconds > 300):
-            go_outside = 1
-            print("Go outside!")
+        if last_time != None:
+            # get difference
+            diff = current_time - last_time
+            # if difference is greater than 5 minutes
+            print(diff.seconds)
+            if(diff.seconds > 300):
+                go_outside = 1
+                print("Go outside!")
     elif (prediction_classes[0] == 0):
+        cur.execute("UPDATE users SET location = %s WHERE publicid = %s",
+                    (False, current_user['publicid']))
         cur.execute("UPDATE users SET last_time = %s WHERE publicid = %s",
                     (datetime.datetime.now(), current_user['publicid']))
     if(prediction_classes[0] == 1 and current_user['is_playing'] == False):
         cur.execute("UPDATE users SET is_playing = %s WHERE publicid = %s",
                     (True, current_user['publicid']))
-        play_spotify()
+        # get rules for username
+        cur.execute("SELECT * FROM rules WHERE username = %s AND if_action = %s",
+                    (current_user['username'], "Inside"))
+        rules = cur.fetchall()
+        rules = [dict(rule) for rule in rules]
+        print(rules)
+        executeRules(rules)
     elif(prediction_classes[0] == 0 and current_user['is_playing'] == True):
         # set last_time to current time
         cur.execute("UPDATE users SET is_playing = %s WHERE publicid = %s",
                     (False, current_user['publicid']))
-        pause_spotify()
+        # get rules for username
+        cur.execute("SELECT * FROM rules WHERE username = %s AND if_action = %s",
+                    (current_user['username'], "Outside"))
+        rules = cur.fetchall()
+        rules = [dict(rule) for rule in rules]
+        print(rules)
+        executeRules(rules)
     con.commit()
     print(prediction_classes)
     # return same json back
@@ -317,4 +402,4 @@ if __name__ == "__main__":
     # app.run(debug=True, host='0.0.0.0', port=443,
     #         ssl_context=('client.crt', 'private.key'))
     print("Running on port 5000")
-    app.run(threaded=True, port=5000)
+    app.run(debug=True, threaded=True, port=5000)

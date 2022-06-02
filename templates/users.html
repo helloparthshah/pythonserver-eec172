@@ -1,0 +1,31 @@
+{% for user in users %}
+<div class="card bg-primary text-white">
+  <div class="card-header">{{ user.username }}</div>
+  <div class="card-body text-center">
+    <button
+      onclick="addRule(this)"
+      user="{{user}}"
+      type="button"
+      class="btn btn-secondary"
+    >
+      Add rule
+    </button>
+    <!-- <div class="row">
+        <div class="col text-center">IF</div>
+        <div class="col">
+          <select class="form-select">
+            <option>1</option>
+            <option>2</option>
+            <option>3</option>
+            <option>4</option>
+          </select>
+        </div>
+        <div class="col text-center">THEN</div>
+        <div class="col"></div>
+      </div> -->
+  </div>
+  <div class="card-footer status">
+    The device is currently {{ 'inside' if user.location==true else 'outside' }}
+  </div>
+</div>
+{% endfor %}
