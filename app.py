@@ -349,6 +349,7 @@ def executeRules(rules):
 def predict(current_user):
     # print the body of the request
     data = request.get_json()
+    print(data)
     df = pd.DataFrame(data, index=[0], columns=headers)
     df.fillna(0, inplace=True)
     df.drop('location', axis=1, inplace=True)
@@ -385,6 +386,7 @@ def predict(current_user):
                     (False, current_user['publicid']))
         cur.execute("UPDATE users SET last_time = %s WHERE publicid = %s",
                     (datetime.datetime.now(), current_user['publicid']))
+
     if(prediction_classes[0] == 1 and current_user['is_playing'] == False):
         cur.execute("UPDATE users SET is_playing = %s WHERE publicid = %s",
                     (True, current_user['publicid']))
@@ -395,6 +397,7 @@ def predict(current_user):
         rules = [dict(rule) for rule in rules]
         print(rules)
         executeRules(rules)
+
     elif(prediction_classes[0] == 0 and current_user['is_playing'] == True):
         # set last_time to current time
         cur.execute("UPDATE users SET is_playing = %s WHERE publicid = %s",
@@ -406,6 +409,7 @@ def predict(current_user):
         rules = [dict(rule) for rule in rules]
         print(rules)
         executeRules(rules)
+
     con.commit()
     print(prediction_classes)
     # return same json back
